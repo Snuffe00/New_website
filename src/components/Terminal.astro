@@ -1,0 +1,414 @@
+---
+import { routes } from '../data/routes';
+import { getProfile, getProjects } from '../data/content';
+
+const profile = await getProfile();
+const projects = await getProjects();
+
+// Everything the browser-side script needs, handed over as JSON.
+const config = {
+	routes: routes.map(({ path, name }) => ({ path, name })),
+	projects: projects.map((p) => ({ id: p.id, title: p.data.title })),
+	handle: profile.data.handle,
+	whoami: `${profile.data.name} (${profile.data.role})`,
+};
+---
+
+<button class="terminal-toggle" type="button" aria-controls="terminal" aria-expanded="false" data-terminal-toggle>
+	<span aria-hidden="true">&gt;_</span>
+	<span class="sr-only">Toggle terminal</span>
+</button>
+
+<section id="terminal" class="terminal" aria-label="Terminal" hidden data-config={JSON.stringify(config)}>
+	<div class="bar">
+		<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+		<span class="title">terminal</span>
+		<button type="button" class="close" data-terminal-close aria-label="Close terminal">×</button>
+	</div>
+	<div class="output" data-terminal-output aria-live="polite"></div>
+	<form class="line" data-terminal-form>
+		<label for="terminal-input" class="prompt" data-terminal-prompt></label>
+		<input
+			id="terminal-input"
+			type="text"
+			autocomplete="off"
+			autocapitalize="off"
+			spellcheck="false"
+			enterkeyhint="go"
+		/>
+	</form>
+</section>
+
+<script>
+	type Config = {
+		routes: { path: string; name: string }[];
+		projects: { id: string; title: string }[];
+		handle: string;
+		whoami: string;
+	};
+
+	const root = document.getElementById('terminal')!;
+	const toggle = document.querySelector<HTMLButtonElement>('[data-terminal-toggle]')!;
+	const closeButton = root.querySelector<HTMLButtonElement>('[data-terminal-close]')!;
+	const output = root.querySelector<HTMLElement>('[data-terminal-output]')!;
+	const form = root.querySelector<HTMLFormElement>('[data-terminal-form]')!;
+	const promptLabel = root.querySelector<HTMLElement>('[data-terminal-prompt]')!;
+	const input = root.querySelector<HTMLInputElement>('#terminal-input')!;
+
+	const config: Config = JSON.parse(root.dataset.config!);
+	const STORAGE_KEY = 'terminal-open';
+
+	const cwd = location.pathname.replace(/\/$/, '') || '/';
+	const validPaths = new Set([
+		...config.routes.map((r) => r.path),
+		...config.projects.map((p) => `/projects/${p.id}`),
+	]);
+	const history: string[] = [];
+	let historyIndex = 0;
+
+	const displayPath = (path: string) => (path === '/' ? '~' : `~${path}`);
+	const prompt = `guest@${config.handle}:${displayPath(cwd)}$`;
+	promptLabel.textContent = prompt;
+
+	// sessionStorage can throw (private mode, blocked storage), so never let it break the terminal.
+	function remember(open: boolean) {
+		try {
+			if (open) sessionStorage.setItem(STORAGE_KEY, '1');
+			else sessionStorage.removeItem(STORAGE_KEY);
+		} catch {}
+	}
+
+	function wasOpen() {
+		try {
+			return sessionStorage.getItem(STORAGE_KEY) === '1';
+		} catch {
+			return false;
+		}
+	}
+
+	function print(text: string, className?: string) {
+		const line = document.createElement('div');
+		line.textContent = text;
+		if (className) line.className = className;
+		output.append(line);
+		output.scrollTop = output.scrollHeight;
+	}
+
+	/** Turns "about", "../contact", "~/projects/foo", "foo" (inside /projects) into a real path, or null. */
+	function resolve(target: string): string | null {
+		const t = target.trim();
+		if (!t || t === '~' || t === '/' || t === '~/') return '/';
+		if (t === '.') return cwd;
+		if (t === '..' || t === '../') return cwd.split('/').slice(0, -1).join('/') || '/';
+
+		const absolute = t.startsWith('~/') || t.startsWith('/');
+		const clean = t.replace(/^~?\//, '').replace(/^\.\.\//, '').replace(/\/$/, '');
+		if (clean === 'home') return '/';
+
+		const candidates = absolute || cwd === '/' ? [`/${clean}`] : [`${cwd}/${clean}`, `/${clean}`];
+		return candidates.find((c) => validPaths.has(c)) ?? null;
+	}
+
+	function childrenOf(path: string) {
+		if (path === '/') return config.routes.filter((r) => r.path !== '/').map((r) => `${r.name}/`);
+		if (path === '/projects') return config.projects.map((p) => p.id);
+		return [];
+	}
+
+	function navigate(path: string) {
+		if (path === cwd) return;
+		remember(true);
+		location.href = path;
+	}
+
+	const commands: Record<string, (args: string[]) => void> = {
+		help() {
+			[
+				'Available commands:',
+				'  ls [dir]       list pages',
+				'  cd <page>      go to a page (cd about, cd .., cd ~)',
+				'  pwd            show where you are',
+				'  whoami         who is this site about',
+				'  history        show previous commands',
+				'  clear          clear the screen',
+				'  exit           close the terminal',
+				'Tip: Tab completes page names, ↑/↓ browse history.',
+			].forEach((line) => print(line));
+		},
+		ls([target]) {
+			const path = target ? resolve(target) : cwd;
+			if (!path) return print(`ls: ${target}: No such file or directory`, 'error');
+			const items = childrenOf(path);
+			print(items.length ? items.join('  ') : '(empty)', items.length ? 'accent' : 'muted');
+		},
+		cd([target = '~']) {
+			const path = resolve(target);
+			if (!path) return print(`cd: no such page: ${target}`, 'error');
+			navigate(path);
+		},
+		pwd() {
+			print(displayPath(cwd));
+		},
+		whoami() {
+			print(config.whoami);
+		},
+		history() {
+			history.forEach((cmd, i) => print(`  ${i + 1}  ${cmd}`));
+		},
+		clear() {
+			output.replaceChildren();
+		},
+		exit() {
+			setOpen(false);
+		},
+		echo(args) {
+			print(args.join(' '));
+		},
+		sudo() {
+			print('Nice try. This incident will be reported.', 'error');
+		},
+	};
+	commands.open = commands.cd;
+
+	function run(raw: string) {
+		const line = raw.trim();
+		print(`${prompt} ${line}`, 'echo');
+		if (!line) return;
+		history.push(line);
+		historyIndex = history.length;
+
+		const [name, ...args] = line.split(/\s+/);
+		const key = name.toLowerCase();
+		if (Object.hasOwn(commands, key)) commands[key](args);
+		else print(`command not found: ${name}. Type 'help' for a list.`, 'error');
+	}
+
+	function complete() {
+		const [name, partial = ''] = input.value.split(/\s+/);
+		if (!['cd', 'ls', 'open'].includes(name)) return;
+		const options = [
+			...childrenOf(cwd).map((c) => c.replace(/\/$/, '')),
+			...config.routes.map((r) => r.name),
+		];
+		const matches = [...new Set(options)].filter((o) => o.startsWith(partial));
+		if (matches.length === 1) input.value = `${name} ${matches[0]}`;
+		else if (matches.length > 1) print(matches.join('  '), 'muted');
+	}
+
+	function setOpen(open: boolean) {
+		root.hidden = !open;
+		toggle.setAttribute('aria-expanded', String(open));
+		remember(open);
+		if (open) {
+			if (!output.hasChildNodes()) print("Welcome! Type 'help' to see what you can do.", 'muted');
+			input.focus();
+		} else {
+			toggle.focus();
+		}
+	}
+
+	form.addEventListener('submit', (event) => {
+		event.preventDefault();
+		run(input.value);
+		input.value = '';
+	});
+
+	input.addEventListener('keydown', (event) => {
+		if (event.key === 'Tab') {
+			event.preventDefault();
+			complete();
+		} else if (event.key === 'ArrowUp' && historyIndex > 0) {
+			event.preventDefault();
+			input.value = history[--historyIndex];
+		} else if (event.key === 'ArrowDown') {
+			event.preventDefault();
+			historyIndex = Math.min(historyIndex + 1, history.length);
+			input.value = history[historyIndex] ?? '';
+		}
+	});
+
+	toggle.addEventListener('click', () => setOpen(root.hidden));
+	closeButton.addEventListener('click', () => setOpen(false));
+	root.addEventListener('click', () => input.focus());
+
+	document.addEventListener('keydown', (event) => {
+		const typing = event.target instanceof HTMLElement && event.target.closest('input, textarea, [contenteditable]');
+		if (event.key === '`' && !typing) {
+			event.preventDefault();
+			setOpen(root.hidden);
+		} else if (event.key === 'Escape' && !root.hidden) {
+			setOpen(false);
+		}
+	});
+
+	if (wasOpen()) setOpen(true);
+</script>
+
+<style>
+	.terminal-toggle {
+		position: fixed;
+		right: var(--space-3);
+		bottom: var(--space-3);
+		z-index: 20;
+		width: 3rem;
+		height: 3rem;
+		border: 1px solid var(--border);
+		border-radius: 50%;
+		background: var(--bg-elevated);
+		color: var(--accent);
+		font-family: var(--font-mono);
+		font-weight: 700;
+		cursor: pointer;
+		box-shadow: 0 4px 20px rgb(0 0 0 / 0.4);
+	}
+
+	.terminal-toggle:hover {
+		border-color: var(--accent);
+	}
+
+	.terminal-toggle[aria-expanded='true'] {
+		display: none;
+	}
+
+	.terminal {
+		position: fixed;
+		right: var(--space-3);
+		bottom: var(--space-3);
+		left: var(--space-3);
+		z-index: 30;
+		display: flex;
+		flex-direction: column;
+		max-width: 40rem;
+		height: min(22rem, 60vh);
+		margin-left: auto;
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		background: rgb(8 11 15 / 0.97);
+		box-shadow: 0 12px 40px rgb(0 0 0 / 0.6);
+		font-family: var(--font-mono);
+		font-size: 0.875rem;
+		overflow: hidden;
+	}
+
+	.terminal[hidden] {
+		display: none;
+	}
+
+	.bar {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-2) var(--space-3);
+		border-bottom: 1px solid var(--border);
+		background: var(--bg-elevated);
+	}
+
+	.dots {
+		display: flex;
+		gap: 6px;
+	}
+
+	.dots i {
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		background: #ff5f57;
+	}
+
+	.dots i:nth-child(2) {
+		background: #febc2e;
+	}
+
+	.dots i:nth-child(3) {
+		background: #28c840;
+	}
+
+	.title {
+		flex: 1;
+		text-align: center;
+		color: var(--text-muted);
+		font-size: 0.8rem;
+	}
+
+	.close {
+		border: 0;
+		background: none;
+		color: var(--text-muted);
+		font-size: 1.2rem;
+		line-height: 1;
+		cursor: pointer;
+	}
+
+	.close:hover {
+		color: var(--text);
+	}
+
+	.output {
+		flex: 1;
+		padding: var(--space-3) var(--space-3) 0;
+		overflow-y: auto;
+		white-space: pre-wrap;
+		word-break: break-word;
+	}
+
+	.line {
+		display: flex;
+		gap: var(--space-2);
+		padding: var(--space-1) var(--space-3) var(--space-3);
+	}
+
+	.prompt {
+		flex-shrink: 0;
+		color: var(--accent);
+	}
+
+	input {
+		flex: 1;
+		min-width: 0;
+		padding: 0;
+		border: 0;
+		background: none;
+		color: var(--text);
+		font: inherit;
+		caret-color: var(--accent);
+	}
+
+	input:focus {
+		outline: none;
+	}
+
+	/* Output lines are created by the script, so they need :global to get these styles. */
+	.output :global(.echo) {
+		color: var(--text);
+	}
+
+	.output :global(.accent) {
+		color: var(--accent-2);
+	}
+
+	.output :global(.muted) {
+		color: var(--text-muted);
+	}
+
+	.output :global(.error) {
+		color: #f87171;
+	}
+
+	.output :global(div:not([class])) {
+		color: var(--text-muted);
+	}
+
+	@media (max-width: 30rem) {
+		/* 16px+ stops iOS Safari from zooming in when the input is focused. */
+		.terminal {
+			font-size: 1rem;
+		}
+
+		.prompt {
+			max-width: 45%;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+	}
+</style>

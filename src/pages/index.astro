@@ -1,11 +1,98 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
+import ProjectCard from '../components/ProjectCard.astro';
+import { getProfile, getProjects } from '../data/content';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const profile = await getProfile();
+const featured = (await getProjects()).filter((p) => p.data.featured).slice(0, 3);
 ---
 
 <Layout>
-	<Welcome />
+	<section class="hero">
+		<p class="eyebrow">whoami</p>
+		<h1>{profile.data.name}</h1>
+		<p class="role">{profile.data.role}{profile.data.location && <span> · {profile.data.location}</span>}</p>
+		<p class="tagline">{profile.data.tagline}</p>
+		<div class="actions">
+			<a class="button" href="/projects">View projects</a>
+			<a class="button ghost" href="/contact">Get in touch</a>
+		</div>
+	</section>
+
+	{
+		featured.length > 0 && (
+			<section class="featured" aria-labelledby="featured-heading">
+				<div class="section-head">
+					<div>
+						<p class="eyebrow">ls projects --featured</p>
+						<h2 id="featured-heading">Selected work</h2>
+					</div>
+					<a href="/projects">All projects →</a>
+				</div>
+				<div class="grid">
+					{featured.map((project) => <ProjectCard project={project} />)}
+				</div>
+			</section>
+		)
+	}
 </Layout>
+
+<style>
+	.hero {
+		padding-block: var(--space-5) var(--space-6);
+	}
+
+	h1 {
+		margin: 0;
+		font-size: clamp(2.5rem, 8vw, 4.5rem);
+		letter-spacing: -0.03em;
+	}
+
+	.role {
+		margin: var(--space-2) 0 0;
+		font-family: var(--font-mono);
+		color: var(--accent-2);
+	}
+
+	.role span {
+		color: var(--text-muted);
+	}
+
+	.tagline {
+		max-width: 38rem;
+		margin: var(--space-4) 0 0;
+		font-size: 1.2rem;
+		color: var(--text-muted);
+	}
+
+	.actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-3);
+		margin-top: var(--space-5);
+	}
+
+	.section-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: end;
+		justify-content: space-between;
+		gap: var(--space-3);
+		margin-bottom: var(--space-4);
+	}
+
+	.section-head h2 {
+		margin: 0;
+	}
+
+	.section-head a {
+		font-family: var(--font-mono);
+		font-size: 0.9rem;
+	}
+
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+		gap: var(--space-3);
+	}
+</style>

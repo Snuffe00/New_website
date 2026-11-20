@@ -1,0 +1,69 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+	project: CollectionEntry<'projects'>;
+}
+
+const { project } = Astro.props;
+const { title, description, year, tags } = project.data;
+---
+
+<article class="card">
+	<p class="meta">{year}</p>
+	<h3><a href={`/projects/${project.id}`}>{title}</a></h3>
+	<p class="description">{description}</p>
+	<ul class="tags">{tags.map((tag) => <li>{tag}</li>)}</ul>
+</article>
+
+<style>
+	.card {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		padding: var(--space-4);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		background: var(--bg-elevated);
+		transition:
+			border-color 0.15s,
+			transform 0.15s;
+	}
+
+	.card:hover {
+		border-color: var(--accent);
+		transform: translateY(-2px);
+	}
+
+	.meta {
+		margin: 0;
+		font-family: var(--font-mono);
+		font-size: 0.8rem;
+		color: var(--text-muted);
+	}
+
+	h3 {
+		margin: 0;
+		font-size: 1.15rem;
+	}
+
+	/* Makes the whole card clickable while keeping a single real link. */
+	h3 a {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	h3 a::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+	}
+
+	.description {
+		flex: 1;
+		margin: 0;
+		color: var(--text-muted);
+	}
+</style>

@@ -1,0 +1,132 @@
+---
+import { render } from 'astro:content';
+import Layout from '../layouts/Layout.astro';
+import { getProfile } from '../data/content';
+
+const profile = await getProfile();
+const { skills, experience } = profile.data;
+const { Content } = await render(profile);
+---
+
+<Layout title="About">
+	<p class="eyebrow">cat about.md</p>
+	<h1>About me</h1>
+
+	<div class="layout">
+		<div class="prose">
+			<Content />
+		</div>
+
+		<aside>
+			{
+				skills.length > 0 && (
+					<section aria-labelledby="skills-heading">
+						<h2 id="skills-heading">Skills</h2>
+						<ul class="tags">{skills.map((skill) => <li>{skill}</li>)}</ul>
+					</section>
+				)
+			}
+		</aside>
+	</div>
+
+	{
+		experience.length > 0 && (
+			<section class="experience" aria-labelledby="experience-heading">
+				<h2 id="experience-heading">Experience</h2>
+				<ol>
+					{experience.map((item) => (
+						<li>
+							<p class="period">{item.period}</p>
+							<h3>
+								{item.title} <span>@ {item.place}</span>
+							</h3>
+							{item.description && <p class="description">{item.description}</p>}
+						</li>
+					))}
+				</ol>
+			</section>
+		)
+	}
+</Layout>
+
+<style>
+	h1 {
+		margin: 0 0 var(--space-5);
+		font-size: clamp(2rem, 6vw, 3rem);
+	}
+
+	.layout {
+		display: grid;
+		gap: var(--space-5);
+	}
+
+	@media (min-width: 48rem) {
+		.layout {
+			grid-template-columns: 2fr 1fr;
+		}
+	}
+
+	.prose :global(p:first-child) {
+		margin-top: 0;
+	}
+
+	h2 {
+		margin: 0 0 var(--space-3);
+		font-family: var(--font-mono);
+		font-size: 0.9rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--accent);
+	}
+
+	.experience {
+		margin-top: var(--space-6);
+	}
+
+	ol {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		border-left: 1px solid var(--border);
+	}
+
+	ol li {
+		position: relative;
+		padding: 0 0 var(--space-4) var(--space-4);
+	}
+
+	/* Timeline dot */
+	ol li::before {
+		content: '';
+		position: absolute;
+		left: -5px;
+		top: 0.45em;
+		width: 9px;
+		height: 9px;
+		border-radius: 50%;
+		background: var(--accent);
+	}
+
+	.period {
+		margin: 0;
+		font-family: var(--font-mono);
+		font-size: 0.8rem;
+		color: var(--text-muted);
+	}
+
+	h3 {
+		margin: var(--space-1) 0 0;
+		font-size: 1.1rem;
+	}
+
+	h3 span {
+		font-weight: 400;
+		color: var(--accent-2);
+	}
+
+	.description {
+		margin: var(--space-1) 0 0;
+		color: var(--text-muted);
+	}
+</style>

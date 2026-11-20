@@ -1,0 +1,106 @@
+---
+import type { GetStaticPaths } from 'astro';
+import { render } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import { getProjects } from '../../data/content';
+
+// Builds one page per project file, e.g. /projects/example-project.
+export const getStaticPaths = (async () => {
+	const projects = await getProjects();
+	return projects.map((project) => ({ params: { id: project.id }, props: { project } }));
+}) satisfies GetStaticPaths;
+
+const { project } = Astro.props;
+const { title, description, year, tags, url, repo } = project.data;
+const { Content } = await render(project);
+---
+
+<Layout title={title} description={description}>
+	<article>
+		<a class="back" href="/projects">cd ..</a>
+		<p class="eyebrow">cat {project.id}.md</p>
+		<h1>{title}</h1>
+		<p class="lead">{description}</p>
+
+		<div class="meta">
+			<span>{year}</span>
+			<ul class="tags">{tags.map((tag) => <li>{tag}</li>)}</ul>
+		</div>
+
+		{
+			(url || repo) && (
+				<div class="links">
+					{url && <a class="button" href={url}>Visit site ↗</a>}
+					{repo && <a class="button ghost" href={repo}>Source code ↗</a>}
+				</div>
+			)
+		}
+
+		<div class="prose">
+			<Content />
+		</div>
+	</article>
+</Layout>
+
+<style>
+	article {
+		max-width: 44rem;
+	}
+
+	.back {
+		display: inline-block;
+		margin-bottom: var(--space-4);
+		font-family: var(--font-mono);
+		font-size: 0.9rem;
+	}
+
+	.back::before {
+		content: '$ ';
+		color: var(--text-muted);
+	}
+
+	h1 {
+		margin: 0;
+		font-size: clamp(2rem, 6vw, 3rem);
+	}
+
+	.lead {
+		margin: var(--space-3) 0;
+		font-size: 1.2rem;
+		color: var(--text-muted);
+	}
+
+	.meta {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-3);
+		font-family: var(--font-mono);
+		font-size: 0.85rem;
+		color: var(--text-muted);
+	}
+
+	.links {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-3);
+		margin-top: var(--space-4);
+	}
+
+	.prose {
+		margin-top: var(--space-5);
+		padding-top: var(--space-4);
+		border-top: 1px solid var(--border);
+	}
+
+	.prose :global(h2) {
+		margin-top: var(--space-5);
+	}
+
+	.prose :global(code) {
+		padding: 0.1em 0.35em;
+		border-radius: 4px;
+		background: var(--bg-elevated);
+		color: var(--accent);
+	}
+</style>

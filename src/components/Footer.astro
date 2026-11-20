@@ -1,0 +1,34 @@
+---
+import { getProfile } from '../data/content';
+
+const profile = await getProfile();
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+	<div class="container inner">
+		<p>© {year} {profile.data.name}</p>
+		<p class="hint">Press <kbd>`</kbd> to open the terminal</p>
+	</div>
+</footer>
+
+<style>
+	.site-footer {
+		border-top: 1px solid var(--border);
+		font-family: var(--font-mono);
+		font-size: 0.8rem;
+		color: var(--text-muted);
+	}
+
+	.inner {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		gap: var(--space-2);
+		padding-block: var(--space-4);
+	}
+
+	p {
+		margin: 0;
+	}
+</style>

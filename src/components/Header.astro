@@ -1,0 +1,100 @@
+---
+import { routes } from '../data/routes';
+import { getProfile } from '../data/content';
+
+const profile = await getProfile();
+const current = Astro.url.pathname.replace(/\/$/, '') || '/';
+
+function isActive(path: string) {
+	return path === '/' ? current === '/' : current === path || current.startsWith(`${path}/`);
+}
+---
+
+<header class="site-header">
+	<div class="container inner">
+		<a class="logo" href="/">~/{profile.data.handle}<span class="cursor" aria-hidden="true">_</span></a>
+		<nav aria-label="Main">
+			<ul>
+				{
+					routes
+						.filter((route) => route.path !== '/')
+						.map((route) => (
+							<li>
+								<a href={route.path} aria-current={isActive(route.path) ? 'page' : undefined}>
+									{route.label}
+								</a>
+							</li>
+						))
+				}
+			</ul>
+		</nav>
+	</div>
+</header>
+
+<style>
+	.site-header {
+		position: sticky;
+		top: 0;
+		z-index: 10;
+		border-bottom: 1px solid var(--border);
+		background: rgb(11 15 20 / 0.85);
+		backdrop-filter: blur(8px);
+	}
+
+	.inner {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-3);
+		min-height: 3.5rem;
+	}
+
+	.logo {
+		font-family: var(--font-mono);
+		font-weight: 600;
+		color: var(--accent);
+		text-decoration: none;
+	}
+
+	.cursor {
+		animation: blink 1.1s steps(1) infinite;
+	}
+
+	@keyframes blink {
+		50% {
+			opacity: 0;
+		}
+	}
+
+	ul {
+		display: flex;
+		gap: var(--space-1);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	nav a {
+		display: block;
+		padding: var(--space-1) var(--space-2);
+		border-radius: 4px;
+		font-family: var(--font-mono);
+		font-size: 0.9rem;
+		color: var(--text-muted);
+		text-decoration: none;
+	}
+
+	nav a:hover {
+		color: var(--text);
+		background: var(--bg-hover);
+	}
+
+	nav a[aria-current='page'] {
+		color: var(--accent);
+	}
+
+	nav a[aria-current='page']::before {
+		content: './';
+		color: var(--text-muted);
+	}
+</style>
