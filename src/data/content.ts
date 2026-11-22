@@ -9,5 +9,6 @@ export async function getProfile() {
 /** Projects, newest first. */
 export async function getProjects() {
 	const projects = await getCollection('projects');
-	return projects.sort((a, b) => b.data.year - a.data.year);
+	// "YYYY-MM" strings sort correctly as plain text.
+	return projects.sort((a, b) => b.data.start.localeCompare(a.data.start));
 }

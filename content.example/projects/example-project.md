@@ -1,9 +1,15 @@
 ---
-title: Example project
+title: Example school project
 description: A short one-line summary shown on the project card.
-year: 2025
+category: school
+start: "2025-09"
+end: "2025-12"
+hours: 120
+team: 4
+role: Backend developer
+course: Example course
+organization: Example university
 tags: [Example]
-url: https://example.com
 repo: https://github.com/
 featured: true
 ---

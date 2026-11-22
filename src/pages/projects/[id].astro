@@ -3,6 +3,7 @@ import type { GetStaticPaths } from 'astro';
 import { render } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 import { getProjects } from '../../data/content';
+import { categories, formatPeriod, formatTeam, statuses } from '../../data/projects';
 
 // Builds one page per project file, e.g. /projects/example-project.
 export const getStaticPaths = (async () => {
@@ -11,8 +12,21 @@ export const getStaticPaths = (async () => {
 }) satisfies GetStaticPaths;
 
 const { project } = Astro.props;
-const { title, description, year, tags, url, repo } = project.data;
+const { title, description, category, status, start, end, hours, team, role, course, organization, tags, url, repo } =
+	project.data;
 const { Content } = await render(project);
+
+// Rows for the fact box. Optional fields that aren't filled in are skipped.
+const facts = [
+	['Category', categories[category].label],
+	['Period', formatPeriod(start, end)],
+	['Status', statuses[status]],
+	['Time spent', hours && `~${hours} hours`],
+	['Team', team && formatTeam(team)],
+	['My role', role],
+	['Course', course],
+	['Organization', organization],
+].filter((fact): fact is [string, string] => Boolean(fact[1]));
 ---
 
 <Layout title={title} description={description}>
@@ -22,10 +36,18 @@ const { Content } = await render(project);
 		<h1>{title}</h1>
 		<p class="lead">{description}</p>
 
-		<div class="meta">
-			<span>{year}</span>
-			<ul class="tags">{tags.map((tag) => <li>{tag}</li>)}</ul>
-		</div>
+		<dl class="facts">
+			{
+				facts.map(([label, value]) => (
+					<div>
+						<dt>{label}</dt>
+						<dd>{value}</dd>
+					</div>
+				))
+			}
+		</dl>
+
+		{tags.length > 0 && <ul class="tags">{tags.map((tag) => <li>{tag}</li>)}</ul>}
 
 		{
 			(url || repo) && (
@@ -70,14 +92,28 @@ const { Content } = await render(project);
 		color: var(--text-muted);
 	}
 
-	.meta {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: var(--space-3);
+	.facts {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr));
+		gap: var(--space-3) var(--space-4);
+		margin: var(--space-4) 0;
+		padding: var(--space-4);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		background: var(--bg-elevated);
+	}
+
+	dt {
 		font-family: var(--font-mono);
-		font-size: 0.85rem;
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
 		color: var(--text-muted);
+	}
+
+	dd {
+		margin: 0;
+		color: var(--text);
 	}
 
 	.links {

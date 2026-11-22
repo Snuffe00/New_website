@@ -2,8 +2,14 @@
 import Layout from '../../layouts/Layout.astro';
 import ProjectCard from '../../components/ProjectCard.astro';
 import { getProjects } from '../../data/content';
+import { categories, categoryIds } from '../../data/projects';
 
 const projects = await getProjects();
+
+// One section per category, skipping categories without any projects.
+const groups = categoryIds
+	.map((id) => ({ id, ...categories[id], projects: projects.filter((p) => p.data.category === id) }))
+	.filter((group) => group.projects.length > 0);
 ---
 
 <Layout title="Projects" description="Things I have built.">
@@ -11,9 +17,29 @@ const projects = await getProjects();
 	<h1>Projects</h1>
 	<p class="intro">Things I have built. Open one for the full story.</p>
 
-	<div class="grid">
-		{projects.map((project) => <ProjectCard project={project} />)}
-	</div>
+	{
+		groups.length > 1 && (
+			<nav class="jump" aria-label="Project categories">
+				{groups.map((group) => (
+					<a href={`#${group.id}`}>
+						{group.label} <span>({group.projects.length})</span>
+					</a>
+				))}
+			</nav>
+		)
+	}
+
+	{
+		groups.map((group) => (
+			<section id={group.id} aria-labelledby={`${group.id}-heading`}>
+				<h2 id={`${group.id}-heading`}>{group.label}</h2>
+				<p class="group-description">{group.description}</p>
+				<div class="grid">
+					{group.projects.map((project) => <ProjectCard project={project} />)}
+				</div>
+			</section>
+		))
+	}
 </Layout>
 
 <style>
@@ -23,7 +49,56 @@ const projects = await getProjects();
 	}
 
 	.intro {
-		margin: var(--space-2) 0 var(--space-5);
+		margin: var(--space-2) 0 var(--space-4);
+		color: var(--text-muted);
+	}
+
+	.jump {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-2);
+		margin-bottom: var(--space-3);
+	}
+
+	.jump a {
+		padding: 0.3em 0.8em;
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		font-family: var(--font-mono);
+		font-size: 0.85rem;
+		color: var(--text);
+		text-decoration: none;
+	}
+
+	.jump a:hover {
+		border-color: var(--accent);
+		color: var(--accent);
+	}
+
+	.jump span {
+		color: var(--text-muted);
+	}
+
+	section {
+		margin-top: var(--space-5);
+		/* Keeps the heading clear of the sticky header when jumping to it. */
+		scroll-margin-top: 5rem;
+	}
+
+	h2 {
+		margin: 0;
+		font-family: var(--font-mono);
+		font-size: 1.1rem;
+		color: var(--accent);
+	}
+
+	h2::before {
+		content: '## ';
+		color: var(--text-muted);
+	}
+
+	.group-description {
+		margin: var(--space-1) 0 var(--space-3);
 		color: var(--text-muted);
 	}
 

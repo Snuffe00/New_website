@@ -7,7 +7,7 @@
 Personal portfolio website for Hugo Westin, built with Astro. It was started from the Astro "basics" starter template; `src/components/Welcome.astro` and the starter assets are placeholders to be replaced.
 
 - **Content language:** English
-- **Output:** static site (`astro build` → `dist/`). Hosting is not decided yet, so don't add a deployment adapter or host-specific config until it is.
+- **Output:** static site (`astro build` → `dist/`). Hosted on Vercel at https://hugowestin.se (set as `site` in `astro.config.mjs`). The GitHub repo is connected to Vercel, and every push to `main` deploys. The site is fully static, so no adapter is needed. Don't add one unless a feature needs server rendering.
 
 ## Planned pages
 
@@ -30,13 +30,13 @@ Every page uses the shared layout in `src/layouts/Layout.astro` (header, nav, fo
 - Accessible: semantic HTML, sufficient color contrast on the dark background, alt text on images, visible focus states.
 - Prefer zero client-side JavaScript. Only add a UI framework (React, Svelte, etc.) if a feature really needs interactivity, and ask first.
 
-## Personal content stays out of Git
+## Content
 
-All personal text (bio, About text, experience, contact details, project write-ups) lives in `content/`, which is **gitignored**. `content.example/` is the committed template with placeholder text, and `src/content.config.ts` falls back to it when `content/` is missing (fresh clone, CI).
+All personal text (bio, About text, experience, contact details, project write-ups) lives in `content/`, which is committed to the public repo and deployed. Everything there is published, so don't put drafts or private notes in it. `content.example/` is a template with placeholder text, and `src/content.config.ts` falls back to it when `content/` is missing.
 
 - Never put personal text directly in `src/`. Read it from the `profile` and `projects` collections (helpers in `src/data/content.ts`).
-- When adding a field to a schema, add it to `content.example/` too, with placeholder text.
-- Never copy real content from `content/` into `content.example/` or other committed files.
+- When adding a field to a schema, add it to `content.example/` too, with placeholder text. Project fields also go in `content/project-template.md` and `content.example/project-template.md`, which the user copies for new projects. Project categories are defined in `src/data/projects.ts`.
+- Never copy real content from `content/` into `content.example/`.
 
 ## Terminal
 

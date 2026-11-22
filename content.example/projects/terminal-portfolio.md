@@ -1,7 +1,11 @@
 ---
 title: Terminal portfolio
 description: This website — a dark, static Astro site you can navigate with a built-in terminal.
-year: 2026
+category: personal
+status: in-progress
+start: "2026-11"
+team: 1
+role: Design & development
 tags: [Astro, TypeScript, CSS]
 featured: true
 ---
