@@ -25,6 +25,8 @@ const fullTitle = title ? `${title} · ${profile.data.name}` : profile.data.name
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<meta name="generator" content={Astro.generator} />
 		<title>{fullTitle}</title>
+		<!-- Vercel Web Analytics: counts page views. Only works on Vercel; does nothing locally. -->
+		<script is:inline defer src="/_vercel/insights/script.js"></script>
 	</head>
 	<body>
 		<a class="skip-link" href="#main">Skip to content</a>
